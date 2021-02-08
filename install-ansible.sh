@@ -22,6 +22,7 @@ ansible all -a "/bin/echo hello" --become
 
 # Install Ansible modules
 ansible-galaxy collection install ansible.posix
+ansible-galaxy collection install community.general
 
 # Run Ansible
 ansible-playbook local.yml --ask-become-pass
