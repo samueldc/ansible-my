@@ -3,6 +3,14 @@
   hosts: local
   remote_user: samueldc
   become: yes
+  vars_prompt:
+    
+    - name: ponto_redecamara
+      prompt: Ponto RedeCamara
+      private: no
+    
+    - name: password_redecamara
+      prompt: Password Redecamara
 
   tasks:
   
@@ -11,13 +19,18 @@
       name: vim
       state: present
   
+  - name: mkdir /mnt/nas
+    ansible.builtin.file:
+      path: /mnt/nas
+      state: directory
+
   - name: mount my nas
     ansible.posix.mount:
       src: 192.168.1.253:/Dados
       path: /mnt/nas
       fstype: nfs
       opts: user,rw,auto,vers=3,local_lock=all,_netdev
-      state: present
+      state: mounted
   
   - name: install davfs2
     ansible.builtin.apt:
@@ -43,15 +56,25 @@
   - name: cp  /etc/davfs2/secrets /home/samueldc/.davfs2/secrets
     ansible.builtin.copy:
       src: /etc/davfs2/secrets
+      remote_src: yes
       dest: /home/samueldc/.davfs2/secrets
       owner: samueldc
       group: samueldc
       mode: '0600'
 
   - name: edit secrets file
-  https://drive.camara.leg.br/remote.php/webdav/ {{prompt ponto}} {{prompt password}}
+    ansible.builtin.lineinfile:
+      path: /home/samueldc/.davfs2/secrets
+      line: 'https://drive.camara.leg.br/remote.php/webdav/ {{ ponto_redecamara }} {{ password_redecamara }}'
+      insertafter: EOF
+      state: present
 
   - name: edit /etc/davfs2/davfs2.conf and add use_locks 0
+    ansible.builtin.lineinfile:
+      path: /etc/davfs2/davfs2.conf
+      line: use_locks 0
+      insertafter: EOF
+      state: present
 
   - name: configure davfs2 group
     ansible.builtin.user:
@@ -60,10 +83,37 @@
       name: samueldc
       state: present
 
-  - name: mount my webdav netxcloud
+  - name: fstab my webdav nextcloud
     ansible.posix.mount:
       src: https://drive.camara.leg.br/remote.php/webdav/
       path: /mnt/nextcloud-camara
-      fstype: davfs2
+      fstype: davfs
       opts: user,rw,auto,_netdev
+      state: present
+
+  - name: mount my webdav nextcloud
+    become: yes
+    become_user: samueldc
+    ansible.builtin.command: 
+      cmd: mount /mnt/nextcloud-camara
+      creates: /mnt/nextcloud-camara/.ansible-created
+      warn: no
+
+  - name: install rawtherapee
+    ansible.builtin.apt: 
+      name: rawtherapee
+      state: present
+
+  - name: install steam
+    ansible.builtin.apt:
+      name: steam
+      state: present
+
+  - name: install google chrome
+    ansible.builtin.apt:
+      deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+
+  - name: install virtual machine manager
+    ansible.builtin.apt:
+      name: virt-manager
       state: present
