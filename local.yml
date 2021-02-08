@@ -1,1 +1,69 @@
-- hosts: local
+---
+- name: configure local machine for me
+  hosts: local
+  remote_user: samueldc
+  become: yes
+
+  tasks:
+  
+  - name: ensure vim is installed
+    ansible.builtin.apt:
+      name: vim
+      state: present
+  
+  - name: mount my nas
+    ansible.posix.mount:
+      src: 192.168.1.253:/Dados
+      path: /mnt/nas
+      fstype: nfs
+      opts: user,rw,auto,vers=3,local_lock=all,_netdev
+      state: present
+  
+  - name: install davfs2
+    ansible.builtin.apt:
+      name: davfs2
+      state: present
+
+  - name: mkdir /mnt/nextcloud-camara
+    ansible.builtin.file:
+      path: /mnt/nextcloud-camara
+      state: directory
+      mode: '0775'
+      owner: samueldc
+      group: samueldc
+
+  - name: mkdir /home/samueldc/.davfs2
+    ansible.builtin.file:
+      path: /home/samueldc/.davfs2
+      state: directory
+      mode: '0770'
+      owner: samueldc
+      group: samueldc
+
+  - name: cp  /etc/davfs2/secrets /home/samueldc/.davfs2/secrets
+    ansible.builtin.copy:
+      src: /etc/davfs2/secrets
+      dest: /home/samueldc/.davfs2/secrets
+      owner: samueldc
+      group: samueldc
+      mode: '0600'
+
+  - name: edit secrets file
+  https://drive.camara.leg.br/remote.php/webdav/ {{prompt ponto}} {{prompt password}}
+
+  - name: edit /etc/davfs2/davfs2.conf and add use_locks 0
+
+  - name: configure davfs2 group
+    ansible.builtin.user:
+      append: yes
+      groups: davfs2
+      name: samueldc
+      state: present
+
+  - name: mount my webdav netxcloud
+    ansible.posix.mount:
+      src: https://drive.camara.leg.br/remote.php/webdav/
+      path: /mnt/nextcloud-camara
+      fstype: davfs2
+      opts: user,rw,auto,_netdev
+      state: present
