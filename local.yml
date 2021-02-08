@@ -117,3 +117,32 @@
     ansible.builtin.apt:
       name: virt-manager
       state: present
+
+  - name: install notepadqq
+    ansible.builtin.apt:
+      name: notepadqq
+      state: present
+
+#  - name: download camunda
+#    become: yes
+#    become_user: samueldc
+#    ansible.builtin.get_url:
+#      url: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
+#      dest: /home/samueldc/Downloads
+#      group: samueldc
+#      owner: samueldc
+#      mode: '0660'
+#
+#  - name: extract camunda
+#    ansible.builtin.command: 
+#      cmd: tar xvfz /home/samueldc/Downloads/camunda-modeler-nightly-linux-x64.tar.gz --one-top-level=camunda --strip-components=1 -C /opt
+#
+  - name: download and extract camunda
+    ansible.builtin.unarchive:
+      src: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
+      dest: /opt
+      remote_src: yes
+      extra_opts: 
+      - --one-top-level=camunda
+      - --strip-components=1
+      creates: /opt/camunda/camunda-modeler
