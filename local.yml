@@ -128,6 +128,10 @@
     ansible.builtin.apt:
       deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 
+  - name: install zoom
+    ansible.builtin.apt:
+      deb:  https://zoom.us/client/latest/zoom_amd64.deb
+
   - name: install virtual machine manager
     ansible.builtin.apt:
       name: virt-manager
