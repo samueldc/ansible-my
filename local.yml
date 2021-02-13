@@ -15,17 +15,17 @@
   tasks:
   
   - name: ensure vim is installed
-    ansible.builtin.apt:
+    apt:
       name: vim
       state: present
   
   - name: ensure curl is installed
-    ansible.builtin.apt:
+    apt:
       name: curl
       state: present
   
   - name: mkdir /mnt/nas
-    ansible.builtin.file:
+    file:
       path: /mnt/nas
       state: directory
 
@@ -34,16 +34,16 @@
       src: 192.168.1.253:/Dados
       path: /mnt/nas
       fstype: nfs
-      opts: user,rw,auto,vers=3,local_lock=all,_netdev
+      opts: user,rw,exec,auto,vers=3,local_lock=all,_netdev
       state: mounted
   
   - name: install davfs2
-    ansible.builtin.apt:
+    apt:
       name: davfs2
       state: present
 
   - name: mkdir /mnt/nextcloud-camara
-    ansible.builtin.file:
+    file:
       path: /mnt/nextcloud-camara
       state: directory
       mode: '0775'
@@ -51,7 +51,7 @@
       group: samueldc
 
   - name: mkdir /home/samueldc/.davfs2
-    ansible.builtin.file:
+    file:
       path: /home/samueldc/.davfs2
       state: directory
       mode: '0770'
@@ -59,30 +59,30 @@
       group: samueldc
 
   - name: cp  /etc/davfs2/secrets /home/samueldc/.davfs2/secrets
-    ansible.builtin.copy:
+    copy:
       src: /etc/davfs2/secrets
       remote_src: yes
       dest: /home/samueldc/.davfs2/secrets
       owner: samueldc
       group: samueldc
-      mode: '0600'
+      mode: '0660'
 
   - name: edit secrets file
-    ansible.builtin.lineinfile:
+    lineinfile:
       path: /home/samueldc/.davfs2/secrets
       line: 'https://drive.camara.leg.br/remote.php/webdav/ {{ ponto_redecamara }} {{ password_redecamara }}'
       insertafter: EOF
       state: present
 
   - name: edit /etc/davfs2/davfs2.conf and add use_locks 0
-    ansible.builtin.lineinfile:
+    lineinfile:
       path: /etc/davfs2/davfs2.conf
       line: use_locks 0
       insertafter: EOF
       state: present
 
   - name: configure davfs2 group
-    ansible.builtin.user:
+    user:
       append: yes
       groups: davfs2
       name: samueldc
@@ -93,59 +93,66 @@
       src: https://drive.camara.leg.br/remote.php/webdav/
       path: /mnt/nextcloud-camara
       fstype: davfs
-      opts: user,rw,auto,_netdev
+      opts: user,rw,auto,uid=samueldc,_netdev
       state: present
 
   - name: mount my webdav nextcloud
     become: yes
     become_user: samueldc
-    ansible.builtin.command: 
+    command: 
       cmd: mount /mnt/nextcloud-camara
       creates: /mnt/nextcloud-camara/.ansible-created
       warn: no
 
+  - name: configure webdav for mounting
+    lineinfile:
+      path: /home/samueldc/.zshrc
+      line: "mount /mnt/nextcloud-camara"
+      insertafter: EOF
+      state: present
+
   - name: install rawtherapee
-    ansible.builtin.apt: 
+    apt: 
       name: rawtherapee
       state: present
 
   - name: install inkscape
-    ansible.builtin.apt: 
+    apt: 
       name: inkscape
       state: present
 
   - name: install gimp
-    ansible.builtin.apt: 
+    apt: 
       name: gimp
       state: present
 
   - name: install steam
-    ansible.builtin.apt:
+    apt:
       name: steam
       state: present
 
   - name: install google chrome
-    ansible.builtin.apt:
+    apt:
       deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
 
   - name: install zoom
-    ansible.builtin.apt:
+    apt:
       deb:  https://zoom.us/client/latest/zoom_amd64.deb
 
   - name: install virtual machine manager
-    ansible.builtin.apt:
+    apt:
       name: virt-manager
       state: present
 
   - name: install notepadqq
-    ansible.builtin.apt:
+    apt:
       name: notepadqq
       state: present
 
 #  - name: download camunda
 #    become: yes
 #    become_user: samueldc
-#    ansible.builtin.get_url:
+#    get_url:
 #      url: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
 #      dest: /home/samueldc/Downloads
 #      group: samueldc
@@ -153,11 +160,11 @@
 #      mode: '0660'
 #
 #  - name: extract camunda
-#    ansible.builtin.command: 
+#    command: 
 #      cmd: tar xvfz /home/samueldc/Downloads/camunda-modeler-nightly-linux-x64.tar.gz --one-top-level=camunda --strip-components=1 -C /opt
 #
   - name: download and extract camunda
-    ansible.builtin.unarchive:
+    unarchive:
       src: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
       dest: /opt
       remote_src: yes
@@ -167,22 +174,22 @@
       creates: /opt/camunda/camunda-modeler
 
   - name: add microsoft key
-    ansible.builtin.apt_key:
+    apt_key:
       url: https://packages.microsoft.com/keys/microsoft.asc
       keyring: /etc/apt/trusted.gpg.d/packages.microsoft.gpg
       state: present
 
   - name: update apt cache
-    ansible.builtin.apt:
+    apt:
       update_cache: yes
 
   - name: add microsoft repo
-    ansible.builtin.apt_repository:
+    apt_repository:
       repo: deb [arch=amd64] https://packages.microsoft.com/repos/code stable main
       state: present
 
   - name: install vscode
-    ansible.builtin.apt:
+    apt:
       name: code
       state: present
 
@@ -191,22 +198,22 @@
       name: insomnia-designer
 
   - name: install zsh
-    ansible.builtin.apt: 
+    apt: 
       name: zsh
       state: present
 
   - name: return zsh path
-    ansible.builtin.shell: which zsh
+    shell: which zsh
     register: zsh_path
 
   - name: configure zsh
-    ansible.builtin.user:
+    user:
       name: samueldc
       state: present
       shell: "{{ zsh_path.stdout }}"
 
   - name: populate .zshrc with recommended settings
-    ansible.builtin.copy:
+    copy:
       src: /etc/zsh/newuser.zshrc.recommended
       remote_src: yes
       dest: /home/samueldc/.zshrc
@@ -217,12 +224,12 @@
   - name: install oh-my-zsh
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+    shell: sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     args:
       creates: /home/samueldc/.oh-my-zsh/oh-my-zsh.sh
 
   - name: install zsh extras
-    ansible.builtin.apt: 
+    apt: 
       name: 
       - powerline
       - fonts-powerline
@@ -231,49 +238,49 @@
       state: present
 
   - name: configure powerlevel9k zsh theme
-    ansible.builtin.lineinfile:
+    lineinfile:
       path: /home/samueldc/.zshrc
       line: source /usr/share/powerlevel9k/powerlevel9k.zsh-theme
       insertafter: EOF
       state: present
 
   - name: configure zsh syntax highlighting
-    ansible.builtin.lineinfile:
+    lineinfile:
       path: /home/samueldc/.zshrc
       line: source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
       insertafter: EOF
       state: present
 
   - name: configure xhost for gparted
-    ansible.builtin.lineinfile:
+    lineinfile:
       path: /home/samueldc/.zshrc
-      line: 'xhost +local:'
+      line: "xhost +local:"
       insertafter: EOF
       state: present
 
   - name: install spaceship prompt
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: git clone https://github.com/denysdovhan/spaceship-prompt.git /home/samueldc/.oh-my-zsh/themes/spaceship-prompt
+    shell: git clone https://github.com/denysdovhan/spaceship-prompt.git /home/samueldc/.oh-my-zsh/themes/spaceship-prompt
     args:
       creates: /home/samueldc/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme
 
   - name: configure spaceship prompt
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: ln -s /home/samueldc/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme
+    shell: ln -s /home/samueldc/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme
     args:
       creates: /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme
 
   - name: configure spaceship theme
-    ansible.builtin.lineinfile:
+    lineinfile:
       path: /home/samueldc/.zshrc
       regexp: '^ZSH_THEME=.*$'
       line: 'ZSH_THEME="spaceship"'
       state: present
 
   - name: configure spaceship preferences
-    ansible.builtin.blockinfile:
+    blockinfile:
       path: /home/samueldc/.zshrc
       marker: "# {mark} SPACESHIP PREFERENCES"
       insertafter: EOF
@@ -299,32 +306,32 @@
   - name: reads zsh config file
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: cat /home/samueldc/.zshrc
+    shell: cat /home/samueldc/.zshrc
     register: zshrc_contents
 
   - name: install zinit
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
+    shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
     when: "'Added by Zinit' not in lookup('file', '/home/samueldc/.zshrc')"
 #    when: zshrc_contents.stdout is not search("Added by Zinit")
 
   - name: reload shell
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: source /home/samueldc/.zshrc
+    shell: source /home/samueldc/.zshrc
     args:
       executable: "{{ zsh_path.stdout }}"
 
   - name: compile zinit
     become: yes
     become_user: samueldc
-    ansible.builtin.shell: zinit self-update
+    shell: zinit self-update
     args:
       creates: /home/samueldc/.zinit/completions
 
   - name: install zinit plugins
-    ansible.builtin.blockinfile:
+    blockinfile:
       path: /home/samueldc/.zshrc
       marker: "# {mark} ZINIT PLUGINS"
       insertafter: EOF
