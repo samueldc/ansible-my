@@ -65,7 +65,7 @@
       dest: /home/samueldc/.davfs2/secrets
       owner: samueldc
       group: samueldc
-      mode: '0660'
+      mode: '0600'
 
   - name: edit secrets file
     lineinfile:
@@ -103,13 +103,6 @@
       cmd: mount /mnt/nextcloud-camara
       creates: /mnt/nextcloud-camara/.ansible-created
       warn: no
-
-  - name: configure webdav for mounting
-    lineinfile:
-      path: /home/samueldc/.zshrc
-      line: "mount /mnt/nextcloud-camara"
-      insertafter: EOF
-      state: present
 
   - name: install rawtherapee
     apt: 
@@ -339,5 +332,31 @@
         zinit light zdharma/fast-syntax-highlighting
         zinit light zsh-users/zsh-autosuggestions
         zinit light zsh-users/zsh-completions
+
+#  - name: configure webdav for mounting
+#    lineinfile:
+#      path: /home/samueldc/.xinitrc
+#      line: "mount /mnt/nextcloud-camara"
+#      insertafter: EOF
+#      state: present
+#      create: yes
+#
+  - name: configure webdav for mounting
+    blockinfile:
+      path: /home/samueldc/.config/autostart/mount.desktop
+      marker: "# {mark} MOUNT WEBDAV"
+      insertafter: EOF
+      create: yes
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Exec=mount /mnt/nextcloud-camara
+        Hidden=false
+        NoDisplay=false
+        X-GNOME-Autostart-enabled=true
+        Name[en_US]=Mount WebDav
+        Name=Mount WebDav
+        Comment[en_US]=
+        Comment=
 
 #  - name: configure vscode settings for zsh
