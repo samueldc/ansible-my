@@ -361,9 +361,60 @@
 
 #  - name: configure vscode settings for zsh
 
-# configure fnmode=2
+  - name: configure function keys to work only when fn is pressed
+    shell: echo options hid_apple fnmode=2 | sudo tee -a /etc/modprobe.d/hid_apple.conf
 
-# configure cedilla
+  - name: reload kernel modules
+    shell: sudo update-initramfs -u -k all
 
-# configure pksc11#
+  - name: configure cedilla
+    lineinfile:
+      path: /etc/environment
+      line: GTK_IM_MODULE=cedilla
+      insertafter: EOF
+      state: present
+
+  - name: install pksc11 dependencies
+    apt: 
+      name: 
+      - libjbig0
+      - libtiff5
+      - fontconfig-config
+      - libfontconfig1
+      - libwxbase3.0-0v5
+      - libwxgtk3.0-gtk3-0v5
+      - libpcsclite1
+      - libccid
+      - pcscd
+      - libnss3
+      - libnss3-tools
+      state: present
+
+  - name: create temporary safenet directory
+    tempfile:
+      state: directory
+      suffix: safenet
+    register: safenet_dir
+
+  - name: download and extract safenet client
+    unarchive:
+      src: http://repositorio.serpro.gov.br/drivers/safenet/linux/SafenetAuthenticationClient-BR-10.3_Linux_Ubuntu-RedHat(32-64bits).zip
+      dest: "{{ safenet_dir }}"
+      remote_src: yes
+
+  - name: install safenet client
+    apt:
+      deb: "{{ safenet_dir }}/SafenetAuthenticationClient-BR-10.0.37-0_amd64.deb"
+
+  - name: create a symbolic link to libcrypto
+    file:
+      src: /usr/lib/x86_64-linux-gnu/libcrypto.so
+      dest: /usr/lib/libcrypto.so.6
+      state: link
+
+  - name: configure pkcs11 for chrome
+    become: yes
+    become_user: samueldc
+    shell: modutil -dbdir sql:.pki/nssdb/ -add "eToken" -libfile /usr/lib/libeToken.so
+
 
