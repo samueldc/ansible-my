@@ -362,10 +362,17 @@
 #  - name: configure vscode settings for zsh
 
   - name: configure function keys to work only when fn is pressed
-    shell: echo options hid_apple fnmode=2 | sudo tee -a /etc/modprobe.d/hid_apple.conf
+    lineinfile:
+      path: /etc/modprobe.d/hid_apple.conf
+      line: options hid_apple fnmode=2
+      insertafter: EOF
+      state: present
+      create: yes
+    register: result_fn
 
   - name: reload kernel modules
-    shell: sudo update-initramfs -u -k all
+    shell: update-initramfs -u -k all
+    when: result_fn.changed
 
   - name: configure cedilla
     lineinfile:
@@ -399,22 +406,22 @@
   - name: download and extract safenet client
     unarchive:
       src: http://repositorio.serpro.gov.br/drivers/safenet/linux/SafenetAuthenticationClient-BR-10.3_Linux_Ubuntu-RedHat(32-64bits).zip
-      dest: "{{ safenet_dir }}"
+      dest: "{{ safenet_dir.path }}"
       remote_src: yes
 
   - name: install safenet client
     apt:
-      deb: "{{ safenet_dir }}/SafenetAuthenticationClient-BR-10.0.37-0_amd64.deb"
+      deb: "{{ safenet_dir.path }}/SafenetAuthenticationClient-BR-10.0.37-0_amd64.deb"
 
   - name: create a symbolic link to libcrypto
     file:
-      src: /usr/lib/x86_64-linux-gnu/libcrypto.so
+      src: /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
       dest: /usr/lib/libcrypto.so.6
       state: link
 
-  - name: configure pkcs11 for chrome
-    become: yes
-    become_user: samueldc
-    shell: modutil -dbdir sql:.pki/nssdb/ -add "eToken" -libfile /usr/lib/libeToken.so
+#  - name: configure pkcs11 for chrome
+#    become: yes
+#    become_user: samueldc
+#    shell: modutil -dbdir sql:.pki/nssdb/ -add "eToken" -libfile /usr/lib/libeToken.so
 
 
