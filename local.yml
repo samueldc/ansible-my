@@ -419,9 +419,14 @@
       dest: /usr/lib/libcrypto.so.6
       state: link
 
-#  - name: configure pkcs11 for chrome
-#    become: yes
-#    become_user: samueldc
-#    shell: modutil -dbdir sql:.pki/nssdb/ -add "eToken" -libfile /usr/lib/libeToken.so
+  - name: verify pkcs11 for chrome
+    become: yes
+    become_user: samueldc
+    shell: modutil -dbdir sql:/home/samueldc/.pki/nssdb/ -list | grep "Safenet Token"
+    register: result_pkcs11
 
-
+  - name: configure pkcs11 for chrome
+    become: yes
+    become_user: samueldc
+    shell: modutil -dbdir sql:/home/samueldc/.pki/nssdb/ -add "Safenet Token" -libfile /usr/lib/libeToken.so
+    when: "'Safenet Token' not in result_pkcs11.stdout"
