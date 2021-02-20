@@ -15,3 +15,7 @@ Configure local machine using:
 ```sh
 ansible-playbook local.yml --ask-become-pass
 ```
+
+# Roadmap
+
+Using vars, blocks and handlers.
