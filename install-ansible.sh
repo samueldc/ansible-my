@@ -10,8 +10,8 @@ apt install software-properties-common
 apt install ansible
 
 # Argcomplete
-apt install python-argcomplete
-activate-global-python-argcomplete
+apt install python3-argcomplete
+activate-global-python-argcomplete3
 
 # Inventory
 printf "[local]\n127.0.0.1 ansible_connection=local" | tee -a /etc/ansible/hosts
