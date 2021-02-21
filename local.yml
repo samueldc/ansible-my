@@ -29,8 +29,13 @@
       path: /mnt/nas
       state: directory
 
+  - name: ensure nfs client is installed
+    apt:
+      name: nfs-common
+      state: present
+  
   - name: mount my nas
-    ansible.posix.mount:
+    mount:
       src: 192.168.1.253:/Dados
       path: /mnt/nas
       fstype: nfs
@@ -41,6 +46,11 @@
     apt:
       name: davfs2
       state: present
+
+  - name: setuid for davfs
+    file:
+      path: /sbin/mount.davfs
+      mode: u+s
 
   - name: mkdir /mnt/nextcloud-camara
     file:
@@ -89,21 +99,21 @@
       state: present
 
   - name: fstab my webdav nextcloud
-    ansible.posix.mount:
+    mount:
       src: https://drive.camara.leg.br/remote.php/webdav/
       path: /mnt/nextcloud-camara
       fstype: davfs
       opts: user,rw,auto,uid=samueldc,_netdev
       state: present
 
-  - name: mount my webdav nextcloud
-    become: yes
-    become_user: samueldc
-    command: 
-      cmd: mount /mnt/nextcloud-camara
-      creates: /mnt/nextcloud-camara/.ansible-created
-      warn: no
-
+#  - name: mount my webdav nextcloud
+#    become: yes
+#    become_user: samueldc
+#    command: 
+#      cmd: mount /mnt/nextcloud-camara
+#      creates: /mnt/nextcloud-camara/.ansible-created
+#      warn: no
+#
   - name: install rawtherapee
     apt: 
       name: rawtherapee
@@ -187,7 +197,7 @@
       state: present
 
   - name: install insomnia
-    community.general.snap:
+    snap:
       name: insomnia-designer
 
   - name: install zsh

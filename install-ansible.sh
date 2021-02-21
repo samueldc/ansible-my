@@ -15,7 +15,7 @@ activate-global-python-argcomplete3
 
 # Inventory
 printf "[local]\n127.0.0.1 ansible_connection=local" | tee -a /etc/ansible/hosts
-printf "[local:vars]\nansible_python_interpreter=/usr/bin/python3" | tee -a /etc/ansible/hosts
+printf "\n[local:vars]\nansible_python_interpreter=/usr/bin/python3" | tee -a /etc/ansible/hosts
 
 # Test Ansible
 ansible all -m ping
