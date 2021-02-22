@@ -434,6 +434,7 @@
     become_user: samueldc
     shell: modutil -dbdir sql:/home/samueldc/.pki/nssdb/ -list | grep "Safenet Token"
     register: result_pkcs11
+    ignore_errors: true
 
   - name: configure pkcs11 for chrome
     become: yes
