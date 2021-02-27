@@ -391,6 +391,53 @@
       insertafter: EOF
       state: present
 
+  - name: install video4linux utilities
+    apt: 
+      name: v4l-utils
+      state: present
+
+  - name: configure udev rules for logitech c922 webcam
+    blockinfile:
+      path: /etc/udev/rules.d/99-logitech-c922.rules
+      mode: '0644'
+      marker: "# {mark} UDEV RULES FOR WEBCAM"
+      insertafter: EOF
+      create: yes
+      block: |
+        SUBSYSTEM=="video4linux", KERNEL=="video[0-9]*", ATTRS{product}=="C922 Pro Stream Webcam", ATTR{index}=="0", RUN+="/usr/bin/v4l2-ctl -d $devnode --set-ctrl white_balance_temperature_auto=0"
+        SUBSYSTEM=="video4linux", KERNEL=="video[0-9]*", ATTRS{product}=="C922 Pro Stream Webcam", ATTR{index}=="0", RUN+="/usr/bin/v4l2-ctl -d $devnode --set-ctrl white_balance_temperature=2000"
+    register: result_udev
+
+  - name: reload udev rules
+    shell: udevadm control --reload
+    when: result_udev.changed
+
+  - name: setuid for udevadm
+    file:
+      path: /usr/bin/udevadm
+      mode: u+s
+
+  - name: trigger webcam udev rules
+    shell: udevadm trigger --name-match=/dev/video0
+
+  - name: configure to trigger webcam udev rules at startup
+    blockinfile:
+      path: /home/samueldc/.config/autostart/trigger-webcam-udev-rules.desktop
+      marker: "# {mark} TRIGGER WEBCAM UDEV RULES"
+      insertafter: EOF
+      create: yes
+      block: |
+        [Desktop Entry]
+        Type=Application
+        Exec=udevadm trigger --name-match=/dev/video0
+        Hidden=false
+        NoDisplay=false
+        X-GNOME-Autostart-enabled=true
+        Name[en_US]=Trigger Webcam Udev Rules
+        Name=Trigger Webcam Udev Rules
+        Comment[en_US]=
+        Comment=
+
   - name: install pksc11 dependencies
     apt: 
       name: 
