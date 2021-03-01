@@ -380,9 +380,18 @@
       create: yes
     register: result_fn
 
+  - name: configure bluetooth module to work with xbox on controller
+    lineinfile:
+      path: /etc/modprobe.d/xbox-one-controller.conf
+      line: options bluetooth disable_ertm=1
+      insertafter: EOF
+      state: present
+      create: yes
+    register: result_xbox
+
   - name: reload kernel modules
     shell: update-initramfs -u -k all
-    when: result_fn.changed
+    when: result_fn.changed or result_xbox.changed
 
   - name: configure cedilla
     lineinfile:
