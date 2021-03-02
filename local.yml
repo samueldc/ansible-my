@@ -1,16 +1,16 @@
 ---
 - name: configure local machine for me
   hosts: local
-  remote_user: samueldc
+  remote_user: "{{ username }}"
   become: yes
   vars_prompt:
     
-    - name: ponto_redecamara
-      prompt: Ponto RedeCamara
+    - name: webdav_user
+      prompt: Webdav user
       private: no
     
-    - name: password_redecamara
-      prompt: Password Redecamara
+    - name: webdav_password
+      prompt: Webdav password
 
   tasks:
   
@@ -57,30 +57,30 @@
       path: /mnt/nextcloud-camara
       state: directory
       mode: '0775'
-      owner: samueldc
-      group: samueldc
+      owner: "{{ username }}"
+      group: "{{ username }}"
 
-  - name: mkdir /home/samueldc/.davfs2
+  - name: creates davfs2 user configuration folder
     file:
-      path: /home/samueldc/.davfs2
+      path: "/home/{{ username }}/.davfs2"
       state: directory
       mode: '0770'
-      owner: samueldc
-      group: samueldc
+      owner: "{{ username }}"
+      group: "{{ username }}"
 
-  - name: cp  /etc/davfs2/secrets /home/samueldc/.davfs2/secrets
+  - name: creates davfs2 secrets file
     copy:
       src: /etc/davfs2/secrets
       remote_src: yes
-      dest: /home/samueldc/.davfs2/secrets
-      owner: samueldc
-      group: samueldc
+      dest: "/home/{{ username }}/.davfs2/secrets"
+      owner: "{{ username }}"
+      group: "{{ username }}"
       mode: '0600'
 
   - name: edit secrets file
     lineinfile:
-      path: /home/samueldc/.davfs2/secrets
-      line: 'https://drive.camara.leg.br/remote.php/webdav/ {{ ponto_redecamara }} {{ password_redecamara }}'
+      path: "/home/{{ username }}/.davfs2/secrets"
+      line: "https://drive.camara.leg.br/remote.php/webdav/ {{ webdav_user }} {{ webdav_password }}"
       insertafter: EOF
       state: present
 
@@ -95,7 +95,7 @@
     user:
       append: yes
       groups: davfs2
-      name: samueldc
+      name: "{{ username }}"
       state: present
 
   - name: fstab my webdav nextcloud
@@ -103,12 +103,12 @@
       src: https://drive.camara.leg.br/remote.php/webdav/
       path: /mnt/nextcloud-camara
       fstype: davfs
-      opts: user,rw,auto,uid=samueldc,_netdev
+      opts: "user,rw,auto,uid={{ username }},_netdev"
       state: present
 
 #  - name: mount my webdav nextcloud
 #    become: yes
-#    become_user: samueldc
+#    become_user: "{{ username }}"
 #    command: 
 #      cmd: mount /mnt/nextcloud-camara
 #      creates: /mnt/nextcloud-camara/.ansible-created
@@ -154,17 +154,17 @@
 
 #  - name: download camunda
 #    become: yes
-#    become_user: samueldc
+#    become_user: "{{ username }}"
 #    get_url:
 #      url: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
 #      dest: /home/samueldc/Downloads
-#      group: samueldc
-#      owner: samueldc
+#      group: "{{ username }}"
+#      owner: "{{ username }}"
 #      mode: '0660'
 #
 #  - name: extract camunda
 #    command: 
-#      cmd: tar xvfz /home/samueldc/Downloads/camunda-modeler-nightly-linux-x64.tar.gz --one-top-level=camunda --strip-components=1 -C /opt
+#      cmd: "tar xvfz /home/{{ username }}/Downloads/camunda-modeler-nightly-linux-x64.tar.gz --one-top-level=camunda --strip-components=1 -C /opt"
 #
   - name: download and extract camunda
     unarchive:
@@ -208,10 +208,11 @@
   - name: return zsh path
     shell: which zsh
     register: zsh_path
+    check_mode: no
 
-  - name: configure zsh
+  - name: configure zsh user shell
     user:
-      name: samueldc
+      name: "{{ username }}"
       state: present
       shell: "{{ zsh_path.stdout }}"
 
@@ -219,17 +220,17 @@
     copy:
       src: /etc/zsh/newuser.zshrc.recommended
       remote_src: yes
-      dest: /home/samueldc/.zshrc
-      owner: samueldc
-      group: samueldc
+      dest: "/home/{{ username }}/.zshrc"
+      owner: "{{ username }}"
+      group: "{{ username }}"
       mode: '0600'
 
   - name: install oh-my-zsh
     become: yes
-    become_user: samueldc
+    become_user: "{{ username }}"
     shell: sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
     args:
-      creates: /home/samueldc/.oh-my-zsh/oh-my-zsh.sh
+      creates: "/home/{{ username }}/.oh-my-zsh/oh-my-zsh.sh"
 
   - name: install zsh extras
     apt: 
@@ -242,49 +243,49 @@
 
   - name: configure powerlevel9k zsh theme
     lineinfile:
-      path: /home/samueldc/.zshrc
+      path: "/home/{{ username }}/.zshrc"
       line: source /usr/share/powerlevel9k/powerlevel9k.zsh-theme
       insertafter: EOF
       state: present
 
   - name: configure zsh syntax highlighting
     lineinfile:
-      path: /home/samueldc/.zshrc
+      path: "/home/{{ username }}/.zshrc"
       line: source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
       insertafter: EOF
       state: present
 
   - name: configure xhost for gparted
     lineinfile:
-      path: /home/samueldc/.zshrc
+      path: "/home/{{ username }}/.zshrc"
       line: "xhost +local:"
       insertafter: EOF
       state: present
 
   - name: install spaceship prompt
     become: yes
-    become_user: samueldc
-    shell: git clone https://github.com/denysdovhan/spaceship-prompt.git /home/samueldc/.oh-my-zsh/themes/spaceship-prompt
+    become_user: "{{ username }}"
+    shell: "git clone https://github.com/denysdovhan/spaceship-prompt.git /home/{{ username }}/.oh-my-zsh/themes/spaceship-prompt"
     args:
-      creates: /home/samueldc/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme
+      creates: "/home/{{ username }}/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme"
 
   - name: configure spaceship prompt
     become: yes
-    become_user: samueldc
-    shell: ln -s /home/samueldc/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme
+    become_user: "{{ username }}"
+    shell: "ln -s /home/{{ username }}/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme"
     args:
-      creates: /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme
+      creates: "/home/{{ username }}/.oh-my-zsh/themes/spaceship.zsh-theme"
 
   - name: configure spaceship theme
     lineinfile:
-      path: /home/samueldc/.zshrc
+      path: "/home/{{ username }}/.zshrc"
       regexp: '^ZSH_THEME=.*$'
       line: 'ZSH_THEME="spaceship"'
       state: present
 
   - name: configure spaceship preferences
     blockinfile:
-      path: /home/samueldc/.zshrc
+      path: "/home/{{ username }}/.zshrc"
       marker: "# {mark} SPACESHIP PREFERENCES"
       insertafter: EOF
       block: |
@@ -308,34 +309,34 @@
 
   - name: reads zsh config file
     become: yes
-    become_user: samueldc
-    shell: cat /home/samueldc/.zshrc
+    become_user: "{{ username }}"
+    shell: "cat /home/{{ username }}/.zshrc"
     register: zshrc_contents
 
   - name: install zinit
     become: yes
-    become_user: samueldc
+    become_user: "{{ username }}"
     shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
-    when: "'Added by Zinit' not in lookup('file', '/home/samueldc/.zshrc')"
+    when: "'Added by Zinit' not in lookup('file', '/home/{{ username }}/.zshrc')"
 #    when: zshrc_contents.stdout is not search("Added by Zinit")
 
   - name: reload shell
     become: yes
-    become_user: samueldc
-    shell: source /home/samueldc/.zshrc
+    become_user: "{{ username }}"
+    shell: "source /home/{{ username }}/.zshrc"
     args:
       executable: "{{ zsh_path.stdout }}"
 
   - name: compile zinit
     become: yes
-    become_user: samueldc
+    become_user: "{{ username }}"
     shell: zinit self-update
     args:
-      creates: /home/samueldc/.zinit/completions
+      creates: "/home/{{ username }}/.zinit/completions"
 
   - name: install zinit plugins
     blockinfile:
-      path: /home/samueldc/.zshrc
+      path: "/home/{{ username }}/.zshrc"
       marker: "# {mark} ZINIT PLUGINS"
       insertafter: EOF
       block: |
@@ -345,7 +346,7 @@
 
 #  - name: configure webdav for mounting
 #    lineinfile:
-#      path: /home/samueldc/.xinitrc
+#      path: "/home/{{ username }}/.xinitrc"
 #      line: "mount /mnt/nextcloud-camara"
 #      insertafter: EOF
 #      state: present
@@ -353,7 +354,7 @@
 #
   - name: configure webdav for mounting
     blockinfile:
-      path: /home/samueldc/.config/autostart/mount.desktop
+      path: "/home/{{ username }}/.config/autostart/mount.desktop"
       marker: "# {mark} MOUNT WEBDAV"
       insertafter: EOF
       create: yes
@@ -431,7 +432,7 @@
 
   - name: configure to trigger webcam udev rules at startup
     blockinfile:
-      path: /home/samueldc/.config/autostart/trigger-webcam-udev-rules.desktop
+      path: "/home/{{ username }}/.config/autostart/trigger-webcam-udev-rules.desktop"
       marker: "# {mark} TRIGGER WEBCAM UDEV RULES"
       insertafter: EOF
       create: yes
@@ -468,6 +469,7 @@
       state: directory
       suffix: safenet
     register: safenet_dir
+    check_mode: no
 
   - name: download and extract safenet client
     unarchive:
@@ -487,13 +489,14 @@
 
   - name: verify pkcs11 for chrome
     become: yes
-    become_user: samueldc
-    shell: modutil -dbdir sql:/home/samueldc/.pki/nssdb/ -list | grep "Safenet Token"
+    become_user: "{{ username }}"
+    shell: modutil -dbdir sql:/home/{{ username }}/.pki/nssdb/ -list | grep "Safenet Token"
     register: result_pkcs11
     ignore_errors: true
+    check_mode: no
 
   - name: configure pkcs11 for chrome
     become: yes
-    become_user: samueldc
-    shell: modutil -dbdir sql:/home/samueldc/.pki/nssdb/ -add "Safenet Token" -libfile /usr/lib/libeToken.so
+    become_user: "{{ username }}"
+    shell: modutil -dbdir sql:/home/{{ username }}/.pki/nssdb/ -add "Safenet Token" -libfile /usr/lib/libeToken.so
     when: "'Safenet Token' not in result_pkcs11.stdout"
