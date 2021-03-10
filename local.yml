@@ -520,20 +520,35 @@
     register: canon_driver_dir
     check_mode: no
 
-  - name: download and extract canon driver
+  - name: download and extract canon printer driver
     unarchive:
       src: https://gdlp01.c-wss.com/gds/1/0100007131/01/cnijfilter2-5.30-1-deb.tar.gz
       dest: "{{ canon_driver_dir.path }}"
       remote_src: yes
+      extra_opts: 
+      - --strip-components=1
 
-  - name: install canon driver
+  - name: install canon printer driver
     apt:
       deb: "{{ canon_driver_dir.path }}/packages/cnijfilter2_5.30-1_amd64.deb"
 
   - name: install canon printer
     become: yes
     become_user: "{{ username }}"
-    shell: "{{ canon_driver_dir.path }}/install.sh"
+    expect:
+      command: "{{ canon_driver_dir.path }}/install.sh"
+      echo: yes
+      responses:
+        .*: "1"
+    args:
+      creates: /etc/cups/ppd/G3000LAN.ppd
 
-  # canon scanner driver can be found at https://gdlp01.c-wss.com/gds/4/0100007134/01/scangearmp2-3.30-1-deb.tar.gz
+  - name: download and extract canon scanner driver
+    unarchive:
+      src: https://gdlp01.c-wss.com/gds/4/0100007134/01/scangearmp2-3.30-1-deb.tar.gz
+      dest: "{{ canon_driver_dir.path }}"
+      remote_src: yes
+      extra_opts: 
+      - --strip-components=1
+
 
