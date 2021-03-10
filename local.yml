@@ -512,3 +512,28 @@
     become_user: "{{ username }}"
     shell: modutil -dbdir sql:/home/{{ username }}/.pki/nssdb/ -add "Safenet Token" -libfile /usr/lib/libeToken.so
     when: "'Safenet Token' not in result_pkcs11.stdout"
+
+  - name: create temporary canon driver directory
+    tempfile:
+      state: directory
+      suffix: canon_driver
+    register: canon_driver_dir
+    check_mode: no
+
+  - name: download and extract canon driver
+    unarchive:
+      src: https://gdlp01.c-wss.com/gds/1/0100007131/01/cnijfilter2-5.30-1-deb.tar.gz
+      dest: "{{ canon_driver_dir.path }}"
+      remote_src: yes
+
+  - name: install canon driver
+    apt:
+      deb: "{{ canon_driver_dir.path }}/packages/cnijfilter2_5.30-1_amd64.deb"
+
+  - name: install canon printer
+    become: yes
+    become_user: "{{ username }}"
+    shell: "{{ canon_driver_dir.path }}/install.sh"
+
+  # canon scanner driver can be found at https://gdlp01.c-wss.com/gds/4/0100007134/01/scangearmp2-3.30-1-deb.tar.gz
+
