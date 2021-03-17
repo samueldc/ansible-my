@@ -550,6 +550,12 @@
     apt:
       deb: https://releases.hashicorp.com/vagrant/2.2.14/vagrant_2.2.14_x86_64.deb
 
+  - name: install other needed packages for vagrant
+    apt:
+      name: 
+      - gcc
+      - build-essential
+
   - name: install qemu kvm
     apt:
       name:
@@ -558,6 +564,7 @@
       - libvirt-clients
       - bridge-utils
       - virt-manager
+      - libvirt-dev
       state: present
 
   - name: add user to qemu kvm groups
@@ -568,5 +575,8 @@
       - kvm
       name: "{{ username }}"
       state: present
+
+  - name: install vagrant plugin for libvirt
+    shell: CONFIGURE_ARGS='with-libvirt-include=/usr/include/libvirt with-libvirt-lib=/usr/lib' vagrant plugin install vagrant-libvirt
 
 
