@@ -142,11 +142,6 @@
     apt:
       deb:  https://zoom.us/client/latest/zoom_amd64.deb
 
-  - name: install virtual machine manager
-    apt:
-      name: virt-manager
-      state: present
-
   - name: install notepadqq
     apt:
       name: notepadqq
@@ -550,5 +545,28 @@
       remote_src: yes
       extra_opts: 
       - --strip-components=1
+
+  - name: install vagrant
+    apt:
+      deb: https://releases.hashicorp.com/vagrant/2.2.14/vagrant_2.2.14_x86_64.deb
+
+  - name: install qemu kvm
+    apt:
+      name:
+      - qemu
+      - libvirt-daemon-system
+      - libvirt-clients
+      - bridge-utils
+      - virt-manager
+      state: present
+
+  - name: add user to qemu kvm groups
+    user:
+      append: yes
+      groups: 
+      - libvirt
+      - kvm
+      name: "{{ username }}"
+      state: present
 
 
