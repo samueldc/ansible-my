@@ -229,45 +229,43 @@
 
   - name: install zsh extras
     apt: 
-      name: 
-      - powerline
-      - fonts-powerline
-      - zsh-theme-powerlevel9k
-      - zsh-syntax-highlighting
+      name: fonts-powerline
       state: present
 
-  - name: configure powerlevel9k zsh theme
-    lineinfile:
-      path: "/home/{{ username }}/.zshrc"
-      line: source /usr/share/powerlevel9k/powerlevel9k.zsh-theme
-      insertafter: EOF
-      state: present
+  - name: create temporary firacode directory
+    tempfile:
+      state: directory
+      suffix: firacode
+    register: firacode_dir
+    check_mode: no
 
-  - name: configure zsh syntax highlighting
-    lineinfile:
-      path: "/home/{{ username }}/.zshrc"
-      line: source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-      insertafter: EOF
-      state: present
+  - name: download and extract firacode fonts
+    unarchive: 
+      src: https://github.com/tonsky/FiraCode/releases/download/5.2/Fira_Code_v5.2.zip
+      dest: {{ firacode_dir.path }}
+      remote_src: yes
+      extra_opts: 
+      - --one-top-level=firacode
+      - --strip-components=1
 
-  - name: configure xhost for gparted
-    lineinfile:
-      path: "/home/{{ username }}/.zshrc"
-      line: "xhost +local:"
-      insertafter: EOF
-      state: present
+  - name: install firacode fonts
+    copy:
+      src: "{{ firacode_dir.path }}/ttf/"
+      dest: /usr/local/share/fonts/firacode/
+      remote_src: yes
+      state: link
 
   - name: install spaceship prompt
     become: yes
     become_user: "{{ username }}"
-    shell: "git clone https://github.com/denysdovhan/spaceship-prompt.git /home/{{ username }}/.oh-my-zsh/themes/spaceship-prompt"
+    shell: "git clone https://github.com/denysdovhan/spaceship-prompt.git /home/{{ username }}/.oh-my-zsh/custom/themes/spaceship-prompt"
     args:
-      creates: "/home/{{ username }}/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme"
+      creates: "/home/{{ username }}/.oh-my-zsh/custom/themes/spaceship-prompt/spaceship.zsh-theme"
 
-  - name: configure spaceship prompt
+  - name: configure spaceship theme symlink
     become: yes
     become_user: "{{ username }}"
-    shell: "ln -s /home/{{ username }}/.oh-my-zsh/themes/spaceship-prompt/spaceship.zsh-theme /home/samueldc/.oh-my-zsh/themes/spaceship.zsh-theme"
+    shell: "ln -s /home/{{ username }}/.oh-my-zsh/custom/themes/spaceship-prompt/spaceship.zsh-theme /home/{{ username }}/.oh-my-zsh/custom/themes/spaceship.zsh-theme"
     args:
       creates: "/home/{{ username }}/.oh-my-zsh/themes/spaceship.zsh-theme"
 
@@ -299,35 +297,14 @@
         )
         SPACESHIP_USER_SHOW=always
         SPACESHIP_PROMPT_ADD_NEWLINE=true
-        SPACESHIP_CHAR_SYMBOL="❯"
+        # SPACESHIP_CHAR_SYMBOL="❯"
         SPACESHIP_CHAR_SUFFIX=" "
-
-  - name: reads zsh config file
-    become: yes
-    become_user: "{{ username }}"
-    shell: "cat /home/{{ username }}/.zshrc"
-    register: zshrc_contents
 
   - name: install zinit
     become: yes
     become_user: "{{ username }}"
     shell: sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zinit/master/doc/install.sh)"
     when: "'Added by Zinit' not in lookup('file', '/home/{{ username }}/.zshrc')"
-#    when: zshrc_contents.stdout is not search("Added by Zinit")
-
-  - name: reload shell
-    become: yes
-    become_user: "{{ username }}"
-    shell: "source /home/{{ username }}/.zshrc"
-    args:
-      executable: "{{ zsh_path.stdout }}"
-
-  - name: compile zinit
-    become: yes
-    become_user: "{{ username }}"
-    shell: zinit self-update
-    args:
-      creates: "/home/{{ username }}/.zinit/completions"
 
   - name: install zinit plugins
     blockinfile:
@@ -339,14 +316,20 @@
         zinit light zsh-users/zsh-autosuggestions
         zinit light zsh-users/zsh-completions
 
-#  - name: configure webdav for mounting
-#    lineinfile:
-#      path: "/home/{{ username }}/.xinitrc"
-#      line: "mount /mnt/nextcloud-camara"
-#      insertafter: EOF
-#      state: present
-#      create: yes
-#
+  - name: compile zinit ???
+    become: yes
+    become_user: "{{ username }}"
+    shell: zinit self-update
+    args:
+      creates: "/home/{{ username }}/.zinit/completions"
+
+  - name: configure xhost for gparted
+    lineinfile:
+      path: "/home/{{ username }}/.zshrc"
+      line: "xhost +local: > /dev/null"
+      insertafter: EOF
+      state: present
+
   - name: configure webdav for mounting
     blockinfile:
       path: "/home/{{ username }}/.config/autostart/mount.desktop"
@@ -365,7 +348,7 @@
         Comment[en_US]=
         Comment=
 
-#  - name: configure vscode settings for zsh
+# - name: configure vscode settings for zsh
 
   - name: configure function keys to work only when fn is pressed
     lineinfile:
