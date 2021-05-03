@@ -80,7 +80,14 @@
   - name: edit secrets file
     lineinfile:
       path: "/home/{{ username }}/.davfs2/secrets"
-      line: "https://drive.camara.leg.br/remote.php/webdav/ {{ webdav_user }} {{ webdav_password }}"
+      line: "# https://drive.camara.leg.br/remote.php/webdav/ {{ webdav_user }} {{ webdav_password }}"
+      insertafter: EOF
+      state: present
+
+  - name: edit secrets file new
+    lineinfile:
+      path: "/home/{{ username }}/.davfs2/secrets"
+      line: "https://drive.camara.leg.br/remote.php/dav/files/779709D6-FF20-4EDB-993E-C5E9FA3B341A/ {{ webdav_user }} {{ webdav_password }}"
       insertafter: EOF
       state: present
 
@@ -100,7 +107,8 @@
 
   - name: fstab my webdav nextcloud
     mount:
-      src: https://drive.camara.leg.br/remote.php/webdav/
+      # src: https://drive.camara.leg.br/remote.php/webdav/
+      src: https://drive.camara.leg.br/remote.php/dav/files/779709D6-FF20-4EDB-993E-C5E9FA3B341A/
       path: /mnt/nextcloud-camara
       fstype: davfs
       opts: "user,rw,auto,uid={{ username }},_netdev"
@@ -147,20 +155,6 @@
       name: notepadqq
       state: present
 
-#  - name: download camunda
-#    become: yes
-#    become_user: "{{ username }}"
-#    get_url:
-#      url: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
-#      dest: /home/samueldc/Downloads
-#      group: "{{ username }}"
-#      owner: "{{ username }}"
-#      mode: '0660'
-#
-#  - name: extract camunda
-#    command: 
-#      cmd: "tar xvfz /home/{{ username }}/Downloads/camunda-modeler-nightly-linux-x64.tar.gz --one-top-level=camunda --strip-components=1 -C /opt"
-#
   - name: download and extract camunda
     unarchive:
       src: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
