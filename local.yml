@@ -1,8 +1,13 @@
 ---
 - name: configure local machine for me
-  hosts: local
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars: 
+    ansible_python_interpreter: /usr/bin/python3
   remote_user: "{{ username }}"
   become: yes
+
   vars_prompt:
     
     - name: webdav_user
@@ -14,6 +19,17 @@
 
   tasks:
   
+  - name: assert Ubuntu 25.10+
+    assert:
+      that:
+        - ansible_facts['distribution'] == "Ubuntu"
+        - ansible_facts['distribution_version'] is version('25.10', '>=')
+      fail_msg: "This playbook targets Ubuntu 25.10 or newer."
+
+  - name: update apt cache
+    apt:
+      update_cache: yes
+
   - name: ensure vim is installed
     apt:
       name: vim
@@ -36,7 +52,7 @@
   
   - name: mount my nas
     mount:
-      src: 192.168.1.253:/Dados
+      src: 192.168.1.252:/Dados
       path: /mnt/nas
       fstype: nfs
       opts: user,rw,exec,auto,vers=3,local_lock=all,_netdev
@@ -47,10 +63,16 @@
       name: davfs2
       state: present
 
-  - name: setuid for davfs
+  - name: find mount.davfs
+    command: which mount.davfs
+    register: mount_davfs
+    failed_when: false
+
+  - name: setuid for davfs if present
     file:
-      path: /sbin/mount.davfs
+      path: "{{ mount_davfs.stdout }}"
       mode: u+s
+    when: mount_davfs.stdout != ""
 
   - name: mkdir /mnt/nextcloud-camara
     file:
@@ -68,27 +90,23 @@
       owner: "{{ username }}"
       group: "{{ username }}"
 
-  - name: creates davfs2 secrets file
-    copy:
-      src: /etc/davfs2/secrets
-      remote_src: yes
-      dest: "/home/{{ username }}/.davfs2/secrets"
+  - name: ensure davfs2 secrets file exists with secure perms
+    file:
+      path: "/home/{{ username }}/.davfs2/secrets"
+      state: touch
       owner: "{{ username }}"
       group: "{{ username }}"
       mode: '0600'
 
-  - name: edit secrets file
-    lineinfile:
-      path: "/home/{{ username }}/.davfs2/secrets"
-      line: "# https://drive.camara.leg.br/remote.php/webdav/ {{ webdav_user }} {{ webdav_password }}"
-      insertafter: EOF
-      state: present
-
-  - name: edit secrets file new
+  - name: ensure davfs2 secret entry is present
     lineinfile:
       path: "/home/{{ username }}/.davfs2/secrets"
       line: "https://drive.camara.leg.br/remote.php/dav/files/779709D6-FF20-4EDB-993E-C5E9FA3B341A/ {{ webdav_user }} {{ webdav_password }}"
+      create: yes
       insertafter: EOF
+      owner: "{{ username }}"
+      group: "{{ username }}"
+      mode: '0600'
       state: present
 
   - name: edit /etc/davfs2/davfs2.conf and add use_locks 0
@@ -111,7 +129,7 @@
       src: https://drive.camara.leg.br/remote.php/dav/files/779709D6-FF20-4EDB-993E-C5E9FA3B341A/
       path: /mnt/nextcloud-camara
       fstype: davfs
-      opts: "user,rw,auto,uid={{ username }},_netdev"
+      opts: "user,rw,auto,uid={{ username }},_netdev,x-systemd.automount"
       state: present
 
 #  - name: mount my webdav nextcloud
@@ -141,6 +159,7 @@
     apt:
       name: steam
       state: present
+      ignore_errors: yes
 
   - name: install google chrome
     apt:
@@ -154,16 +173,7 @@
     apt:
       name: notepadqq
       state: present
-
-  - name: download and extract camunda
-    unarchive:
-      src: https://downloads.camunda.cloud/release/camunda-modeler/nightly/camunda-modeler-nightly-linux-x64.tar.gz
-      dest: /opt
-      remote_src: yes
-      extra_opts: 
-      - --one-top-level=camunda
-      - --strip-components=1
-      creates: /opt/camunda/camunda-modeler
+      ignore_errors: yes
 
   - name: add microsoft key
     apt_key:
@@ -184,10 +194,6 @@
     apt:
       name: code
       state: present
-
-  - name: install insomnia
-    snap:
-      name: insomnia-designer
 
   - name: install zsh
     apt: 
@@ -248,6 +254,12 @@
       dest: /usr/local/share/fonts/firacode/
       remote_src: yes
       state: link
+
+  - name: rebuild font cache
+    command: fc-cache -f -v
+    args:
+      warn: false
+    when: ansible_facts['os_family'] == 'Debian'
 
   - name: install spaceship prompt
     become: yes
@@ -406,13 +418,15 @@
     shell: udevadm control --reload
     when: result_udev.changed
 
-  - name: setuid for udevadm
-    file:
-      path: /usr/bin/udevadm
-      mode: u+s
+  - name find udevadm command
+    command: which udevadm
+    register: udevadm_path
+    failed_when: false
 
   - name: trigger webcam udev rules
     shell: udevadm trigger --name-match=/dev/video0
+    become: yes
+    when: udevadm_path.stdout != ""
 
   - name: configure to trigger webcam udev rules at startup
     blockinfile:
@@ -464,12 +478,18 @@
   - name: install safenet client
     apt:
       deb: "{{ safenet_dir.path }}/SafenetAuthenticationClient-BR-10.0.37-0_amd64.deb"
+  - name: find libcrypto
+    shell: ls /usr/lib/x86_64-linux-gnu/libcrypto.so.* || true
+    register: libcrypto_files
+    failed_when: false
+    changed_when: false
 
-  - name: create a symbolic link to libcrypto
+  - name: create symlink for safenet if needed
     file:
-      src: /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1
+      src: "{{ libcrypto_files.stdout_lines[-1] }}"
       dest: /usr/lib/libcrypto.so.6
       state: link
+    when: libcrypto_files.stdout_lines is defined and libcrypto_files.stdout_lines | length > 0 and '/usr/lib/libcrypto.so.6' not in libcrypto_files.stdout_lines
 
   - name: verify pkcs11 for chrome
     become: yes
@@ -484,54 +504,6 @@
     become_user: "{{ username }}"
     shell: modutil -dbdir sql:/home/{{ username }}/.pki/nssdb/ -add "Safenet Token" -libfile /usr/lib/libeToken.so
     when: "'Safenet Token' not in result_pkcs11.stdout"
-
-  - name: create temporary canon driver directory
-    tempfile:
-      state: directory
-      suffix: canon_driver
-    register: canon_driver_dir
-    check_mode: no
-
-  - name: download and extract canon printer driver
-    unarchive:
-      src: https://gdlp01.c-wss.com/gds/1/0100007131/01/cnijfilter2-5.30-1-deb.tar.gz
-      dest: "{{ canon_driver_dir.path }}"
-      remote_src: yes
-      extra_opts: 
-      - --strip-components=1
-
-  - name: install canon printer driver
-    apt:
-      deb: "{{ canon_driver_dir.path }}/packages/cnijfilter2_5.30-1_amd64.deb"
-
-  - name: install canon printer
-    become: yes
-    become_user: "{{ username }}"
-    expect:
-      command: "{{ canon_driver_dir.path }}/install.sh"
-      echo: yes
-      responses:
-        .*: "1"
-    args:
-      creates: /etc/cups/ppd/G3000LAN.ppd
-
-  - name: download and extract canon scanner driver
-    unarchive:
-      src: https://gdlp01.c-wss.com/gds/4/0100007134/01/scangearmp2-3.30-1-deb.tar.gz
-      dest: "{{ canon_driver_dir.path }}"
-      remote_src: yes
-      extra_opts: 
-      - --strip-components=1
-
-  - name: install vagrant
-    apt:
-      deb: https://releases.hashicorp.com/vagrant/2.2.14/vagrant_2.2.14_x86_64.deb
-
-  - name: install other needed packages for vagrant
-    apt:
-      name: 
-      - gcc
-      - build-essential
 
   - name: install qemu kvm
     apt:
@@ -552,8 +524,3 @@
       - kvm
       name: "{{ username }}"
       state: present
-
-  - name: install vagrant plugin for libvirt
-    shell: CONFIGURE_ARGS='with-libvirt-include=/usr/include/libvirt with-libvirt-lib=/usr/lib' vagrant plugin install vagrant-libvirt
-
-
