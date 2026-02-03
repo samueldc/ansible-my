@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # usage
 usage() {
@@ -35,29 +36,41 @@ do
 done
 
 # install ansible
-#apt-add-repository --yes --update ppa:ansible/ansible
 apt update
-apt install software-properties-common
-apt install ansible
+apt install -y ansible
 
 # install ansible modules
+echo "Installing Ansible collections..."
 ansible-galaxy collection install ansible.posix
 ansible-galaxy collection install community.general
 
-# install python argmcomplete
-apt install python3-argcomplete
-activate-global-python-argcomplete3
+# install python3-argcomplete if available (optional)
+if apt-cache search python3-argcomplete | grep -q "^python3-argcomplete"; then
+   apt install -y python3-argcomplete
+   activate-global-python-argcomplete3 2>/dev/null || true
+fi
 
-# inventory local machine
-printf "\n[local]" | tee -a /etc/ansible/hosts
-printf "\n127.0.0.1 ansible_connection=local" | tee -a /etc/ansible/hosts
-printf "\n[local:vars]" | tee -a /etc/ansible/hosts
-printf "\nansible_python_interpreter=/usr/bin/python3" | tee -a /etc/ansible/hosts
-printf "\nusername=$username" | tee -a /etc/ansible/hosts
+# create inventory directory if it doesn't exist
+mkdir -p /etc/ansible/hosts.d/
+
+# inventory local machine in dedicated file
+cat > /etc/ansible/hosts.d/localhost.ini << 'INVENTORY'
+[local]
+127.0.0.1 ansible_connection=local
+
+[local:vars]
+ansible_python_interpreter=/usr/bin/python3
+INVENTORY
+
+# append username variable
+echo "username=$username" >> /etc/ansible/hosts.d/localhost.ini
 
 # test ansible
+echo "Testing Ansible installation..."
 ansible all -m ping
 ansible all -a "/bin/echo hello" --become
+
+echo "Ansible installation completed successfully!"
 
 # run ansible playbook
 ansible-playbook local.yml --ask-become-pass
